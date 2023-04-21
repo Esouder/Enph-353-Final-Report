@@ -1,0 +1,1 @@
+{"rule":"ABLE_TO_PASSIVE","sentence":"^\\QAs a result of the repeatability of our pavement navigation algorithms, the edges of the crosswalk were able to be hard-coded into the pedestrian detector.\\E$"}
