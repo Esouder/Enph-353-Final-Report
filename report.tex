@@ -1,4 +1,4 @@
-\documentclass[titlepage, twocolumn]{article}
+\documentclass[titlepage]{article}
 
 \usepackage{graphicx}
 \usepackage{tabularx}
@@ -38,10 +38,9 @@
         Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interpets each frame and makes a transition decision based on it.
 
         \subsubsection{Pavement and Grass Detection}
-            In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemeted within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. Data was aqquired by by manually driving the vehicle around with a simple ros node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by signifigant compression, images were resized to $0.025$ times their original width and $0.05$ times their original height, this resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
+            In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemeted within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. Data was aqquired by by manually driving the vehicle around with a simple ros node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by signifigant compression, images were resized to 0.025 times their original width and 0.05 times their original height, this resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
 
-            The simple model was composed of only three layers: An input flatten layer, a hidden dense layer, and a output dense layer composed of a single neuron, with a total of 2,666,689 trainable parameters, as shown in Figure~\ref{fig:surfacedetectmodel}.  
-
+            The simple model was composed of only three layers: An input flatten layer, a hidden dense layer, and a output dense layer composed of a single neuron, with a total of 2,666,689 trainable parameters, as shown in Figure~\ref{fig:surfacedetectmodel}.
             \begin{figure}
                 \begin{tabularx}{0.9\linewidth}{ 
                      >{\raggedright\arraybackslash}X 
@@ -57,6 +56,16 @@
                 \caption{Summary of surface detection neural network}
                 \label{fig:surfacedetectmodel}
             \end{figure}
+            The model was trained with a learning rate of $1 \times 10^{-4}$ and a validation split of 0.2 over 10 epochs. Loss and accuracy curves by epoch are shown in Figure~\ref{fig:grasspavegraphs}.
+
+            \begin{figure}
+                \includegraphics[width=\linewidth]{grasspaveloss.png}
+                \includegraphics[width=\linewidth]{grasspaveacc.png}
+                \caption{Loss and accuracy of grass and pavement detection network by training epoch.}
+                \label{fig:grasspavegraphs}
+            \end{figure}
+
+            Because of the small size and binary output of the network, litle work was deemed neccesary to validate it's performance and there was no need for extensive eror analysis. A robot was manually driven around the track and the output of the network's predictions was monitured to ensure it was sensible before it was integrated with the state machine to trigger transitions between pavement and grass navigation states.
 
         \subsubsection{Crosswalk and Pedestrian Detection}
             When navigating over the first section of paved track, two crosswalks with pedestrians must be safely crossed without hitting any pedestrians. The robot must detect the presence of a crosswalk and transition to a `Crosswalk Wait` state in order to avoid hitting a pedestrian. Detection of both crosswalks and pedestrians is performed by methods within the `PedestrianDetector' class. First, crosswalks were detected using simple HSV colour thresholding. [figure here]. A crosswalk was considered 'detected' when 1500 total pixels matching the range of colours associated with the red crosswalk stop line were detected in the bottom 100 rows of the image. Although 1500 pixels is less than 2 full horizontal rows - much less than the size of the detection area - the need for a large area was the result of the relative high velocity which meant that the robot may only receive one or two frames to detect the crosswalk, so the larger area was chosen as a compromise between guaranteeing detection of the stop line and constantly stopping at around the same location. It also provides detection capability if the line is approached at an angle. This hedges against a possible 10 point loss from hitting a pedestrian of other parts of the navigation system fail.
