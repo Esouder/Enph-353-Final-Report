@@ -235,7 +235,7 @@ The parking ID model was trained on a dataset of 400 images of parking IDs extra
 
 \subsubsection{Plate Letters}
 
-The plate letters model was trained on a dataset of >17000 images of plate letters extracted from the simulation environment and automatically labelled using the plate list in the environment.
+The plate letters model was trained on a dataset of 17000 images of plate letters extracted from the simulation environment and automatically labelled using the plate list in the environment.
 
 \begin{figure}[H]
     \begin{tabularx}{0.9\linewidth}{ 
@@ -261,7 +261,7 @@ The plate letters model was trained on a dataset of >17000 images of plate lette
 
 \subsubsection{Plate Numbers}
 
-The plate numbers model was trained on a dataset of >17000 images of plate numbers extracted from the simulation environment and automatically labelled using the plate list in the environment.
+The plate numbers model was trained on a dataset of 17000 images of plate numbers extracted from the simulation environment and automatically labelled using the plate list in the environment.
 
 \begin{figure}[H]
     \begin{tabularx}{0.9\linewidth}{ 
@@ -285,8 +285,27 @@ The plate numbers model was trained on a dataset of >17000 images of plate numbe
     \label{fig:platenummodel}
 \end{figure}
 
+\subsection{Data Collection}
+
+The data collection process was automated using the simulation environment. The first stage was to get an identification network working mostly accurate, then add more data on characters that were misidentified. In the first stage, the simulation was ran and all charcter images collected and labelled (using the plate csv file in the simulation configuration file). A shell script was written to automatically start, run, and stop the simuation and controllers so that data collection could run autonomously. (See the utilities \href{https://github.com/nvanrumpt/robot_controller_utils2/blob/master/scripts/repeat_runsim.sh}{Github repo} for the file.) Once a sufficient quantity of images were collected, the networks were trained and integrated into the plate reader. In the second stage, only the characters that were misidentified were collected. This process was repeated many times until misidentified characters were an infrequent occurence.
+
 
 \section{User Interface}
+
+The user interface is a simple PyQT5 application to display the relevant information from the simulation and controllers. This application makes it easy to see the current state of the simulation and the controllers, and to start and stop the controllers, as well as debugging issues that may arise. The user interface code can be found on github at \href{https://github.com/nvanrumpt/353RobotCompetitionGUI}{nvanrumpt/353RobotCompetitionGUI}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{Gui.png}
+\caption{User Interface showing the annotated image from the plate reader.}
+\label{fig:UI}
+\end{figure}
+
+The largest window can display any image that is published by the plate reader, the controller, or the navigator. Most commonly these are the annotated image from the plate reader, the navigation annotated image, and the pedestrian/car detector. There is a subscriber bound to each of the image topics that will update the displayed image (if it is the one selected by the dropdown). To add additional images one just needs to add the topic name to the dropdown and code a subscriber to the topic.
+
+The bottom of the UI displays the flattened back of the car, the plate mask, and the images that are passed into the plate identification networks. Also shown is the plate list that has been read, with the predicted plates, the number of good readings, and the confidence of the predictions.
+
+The final aspect of the UI are the buttons that allow the user to start the controllers and kill the simulation. This is useful to ensure that no processes are running headless in the background that will interfere with the next simulation being started. 
 
 \section{Conclusion}
 
