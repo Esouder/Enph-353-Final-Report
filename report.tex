@@ -158,6 +158,14 @@ urlcolor=cyan,
 
     \subsection{Performance}
         Through testing and iteration, we found our navigation system to be reliable once tuned, but not necessarily robust to modifications. For instance, we were able to run hundreds of laps on the track without any failures, but would not be able to change the speed without significant trial-and-error based retuning of multiple components and values. Additionally, we found that the navigation system was sensitive to the battery status of the computer the simulation was running on, and would routinely fail if the computer was not charged. We also encountered reliability challenges as we increased the speed of the robot. On the pavement sections, we were not able to reliably exceed 0.5~m/s, and on the grass sections, we were not able to reliably exceed 0.3~m/s without the robot losing the line and failing. We believe this to be a result of amount of track that the robot would cover between frames - the design of this navigation system, since it relies only on the current frame, is unable to use data about its previous navigation inputs or outputs to determine current outputs, and thus is unable to compensate for the robot's momentum. While these speed limits bounded the performance and lap time of the robot, we still found it extremely reliable within the limits of its maximum speed.
+    
+    \subsection{Plate Reader Commands} \label{platereadercontrol}
+
+    It was desired to be able to get better readings on the plates. This was accomplished by recieving a limited set of commands from the plate reader node. Whenever the plate reader would detect a plate, it would send a command to the contoller to move into a StopTurn{Left/Right} state. 
+
+    \red{Nathan to fill this out more.}
+
+    
 
 
 \section{License Plate Detection}
@@ -289,6 +297,11 @@ The plate numbers model was trained on a dataset of 17000 images of plate number
 
 The data collection process was automated using the simulation environment. The first stage was to get an identification network working mostly accurate, then add more data on characters that were misidentified. In the first stage, the simulation was ran and all charcter images collected and labelled (using the plate csv file in the simulation configuration file). A shell script was written to automatically start, run, and stop the simuation and controllers so that data collection could run autonomously. (See the utilities \href{https://github.com/nvanrumpt/robot_controller_utils2/blob/master/scripts/repeat_runsim.sh}{Github repo} for the file.) Once a sufficient quantity of images were collected, the networks were trained and integrated into the plate reader. In the second stage, only the characters that were misidentified were collected. This process was repeated many times until misidentified characters were an infrequent occurence.
 
+\subsection{Controller Communication}
+
+Whenever the plate reader gets a good reading on a plate, it send a command to the controller to stop (and turn in the direction of the plate). This helps ensure that even when driving quickly, the reader can get a sufficient number of readings at each parking ID to be confident in the corresponding plate for that location. 
+
+The plate reader also sends a `done' command to the controller when the final plate has been read confidently. Ideally this would be sent once a good reading had been done on all the plates, but that would require an inner-loop to outer-loop transition, so this was neglected in favour of relying on reading all the plates correctly in the first pass. For more details on the controller side, see section \ref{platereadercontrol}.
 
 \section{User Interface}
 
@@ -308,5 +321,7 @@ The bottom of the UI displays the flattened back of the car, the plate mask, and
 The final aspect of the UI are the buttons that allow the user to start the controllers and kill the simulation. This is useful to ensure that no processes are running headless in the background that will interfere with the next simulation being started. 
 
 \section{Conclusion}
+
+\red{Nathan to do}
 
 \end{document}
