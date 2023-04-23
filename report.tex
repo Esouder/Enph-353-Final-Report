@@ -32,7 +32,7 @@ urlcolor=cyan,
 
 \section{Background}
 
-    The final project for Engineering Physics 353 is the creation of a ROS package to control a simulated robot as it attempts to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars. 
+    The final project for Engineering Physics 353 is the creation of ROS packages to control a simulated robot as it attempts to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars. 
     
     \begin{figure}[H]
     \centering
@@ -45,7 +45,13 @@ urlcolor=cyan,
 
 \section{Overall Architecture}
 
-    I'll do this section. 
+    The robot control software was divided into two ROS packages - one which managed the navigation of the robot and guided it around the track, and one which managed the license plate detection and reporting. The navigation package was composed of a state machine node and a navigation node, which were responsible for controlling the robot's movement around the track, while the plate detection packaged contained a single node responsible for detecting license plates and reporting them over a ROS topic. Additionally, a graphical user interface used for debugging and running the robot was developed and stored in a separate repository. The overall architecture of the robot is shown in Figure~\ref{fig:architecture}. 
+
+    \begin{figure}
+        \includegraphics[width=\linewidth]{architecture.png}
+        \caption{Overall architecture of the robot control software.}
+        \label{fig:architecture}
+    \end{figure}
 
 \section{Navigation}
     Robot navigation was accomplished with an almost entirely classical control system, using minimal neural network based approaches and instead using manually tuned computer vision and classical control techniques. 
