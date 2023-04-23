@@ -1,28 +1,54 @@
 \documentclass[titlepage, twocolumn]{article}
 
-\usepackage{graphicx}
+\usepackage{color,latexsym,amsmath,amssymb,graphicx, float}
+\usepackage{hyperref}
 \usepackage{tabularx}
+\usepackage{titling}
 \graphicspath{{./figures}}
 
-\title{%
-    Engineering Physics 353 Final Report \\
-    \large Team 14 - ``Team 4"}
+\hypersetup{
+colorlinks=true,
+linkcolor=magenta,
+filecolor=magenta,
+urlcolor=cyan,
+}
+
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+\newcommand{\subtitle}[1]{%
+  \posttitle{%
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip0.5em}%
+}
+
+\begin{document}
+
+\title{Engineering Physics 353 Final Report}
+\subtitle{Team 14 - ``Team 4"}
 \author{Nathan Van Rumpt, Eric Souder}
 \date{April 2023}
 
-\begin{document}
 \maketitle
 
 \section{Background}
 
-    The final project for Engineering Physics 353 is the creation of a ROS package to control a simulated robot as it attempts to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars [figure?]. The robot must be capable of navigating entirely autonomously while avoiding collisions with pedestrians and other vehicles in the environment. Points were awarded for correctly reporting a license plate over a ROS topic (6 points for plates on the outer ring, and 8 points for plates on the inner ring) and for completing a full lap, and deducted for hitting pedestrians, other cars, or driving off the road. Our team attempted to create a robot that would be primarily capable of very reliably navigating the track and collecting the maximum amount of points. As a secondary objective, we aimed to have the robot complete as quickly as possible, as tie scores would be broken by the robot with the fastest time.
+    The final project for Engineering Physics 353 is the creation of a ROS package to control a simulated robot as it attempts to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars. 
+    
+    \begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{Competition Space.png}
+    \caption{Competetion track layout}
+    \label{fig:label}
+    \end{figure}
+    
+    The robot must be capable of navigating entirely autonomously while avoiding collisions with pedestrians and other vehicles in the environment. Points were awarded for correctly reporting a license plate over a ROS topic (6 points for plates on the outer ring, and 8 points for plates on the inner ring) and for completing a full lap, and deducted for hitting pedestrians, other cars, or driving off the road. Our team attempted to create a robot that would be primarily capable of very reliably navigating the track and collecting the maximum amount of points. As a secondary objective, we aimed to have the robot complete as quickly as possible, as tie scores would be broken by the robot with the fastest time.
 
 \section{Overall Architecture}
 
     I'll do this section. 
 
 \section{Navigation}
-    Robot navigation was accomplished with an almost entirely classical control system, using minimal neural network-based approaches and instead using manually-tuned computer vision and classical control techniques. 
+    Robot navigation was accomplished with an almost entirely classical control system, using minimal neural network based approaches and instead using manually tuned computer vision and classical control techniques. 
 
     The navigation controller was composed of two ROS nodes: The `State Machine' node was composed of a finite state machine and the `Navigate' node contained a set of navigation algorithms for different scenarios, selecting an appropriate algorithm based on the state reported by the state machine. States were communicated internally between the two nodes via a ROS topic.
     
@@ -129,6 +155,130 @@
 
 
 \section{License Plate Detection}
+
+Plate detection was accomplished using a series of handcrafted filters to extract the individual plate character bounding boxes. This was chosen since it gave a high degree of control over the output, and allowed us to easily tune the system to work on the specific plates used in the competition. The pipeline is shown in Figure~\ref{fig:platepipeline}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{Image Processing Algorithm.drawio.png}
+\caption{Image Processing Algorithm}
+\label{fig:platepipeline}
+\end{figure}
+
+\subsection{Plate Identification Algorithm}
+
+The first step in the pipeline is to mask the image with a blue and a grey HSV filter to isolate the areas that likely contain cars. These two masks are joined and then contoured. Each contour is checked to see if it contains both blue and grey, otherwise it is discarded (this ensures that only actual cars are investigated further, and not sections of the sky or pavement). 
+
+The largest contour in the image moves onto the next stage of analysis. The countour's bounding box image is masked with a more specific grey HSV filter to get the top and bottom sections of the back of the car. These contours are combined and then fitted to a low quality polygon. The longest 4 lines of the polygon are selected and the intersections of each of the lines found. The four points that are closest to the centroid of the original contour are selected as the corners of the back of the car. Finally these corners are used to flatten the back of the car and resize it to a standard dimension.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{Annotated back car.png}
+\caption{Annotated Back Car. Yellow lines from polygon, yellow dots are the corners, cross is centroid of contour.}
+\label{fig:annotatedbackcar}
+\end{figure}
+
+The parking ID is extracted using a simple HSV filter, and then greyscaled before passing into the parking ID neural network.
+
+The flattened image is then masked with a blue HSV filter to isolate the license plate characters. This mask undergoes a slight dilation along x and y, then an agressive dilation only along y. This was chosen to provide a balance of getting the full character without merging large characters when they are next to each other. 
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{XX00 mask.png}
+\caption{Example mask showing non-merging of wide XX combination.}
+\label{fig:XX00mask}
+\end{figure}
+
+Finally this mask is contoured, bounding boxed, and then the bounding box expanded. The characters are then filtered based on size and aspect ratio. The remaining contours are then sorted by x position and the characters are extracted from the plate. The characters are then resized to a standard dimension and passed to the neural network for classification.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{XX00 identified.png}
+\caption{Identified XX00 plate.}
+\label{fig:XX00identified}
+\end{figure}
+
+\subsection{Neural Networks}
+
+The plate identification algorithm uses a total of 3 neural networks. One to identify the parking ID, one for the plate letters, and one for the plate numbers. Seperate networks were chosen for each of these tasks since it simplified the training process and decreased computation time. 
+
+\subsubsection{Parking ID model}
+
+The parking ID model was trained on a dataset of 400 images of parking IDs extracted from the simulation environment and manually labelled. 
+
+\begin{figure}[H]
+    \begin{tabularx}{0.9\linewidth}{ 
+         >{\raggedright\arraybackslash}X 
+         >{\raggedright\arraybackslash}X 
+         >{\raggedleft\arraybackslash}X  }
+
+         Layer (type) & Output Shape & Num. Params. \\ 
+        \hline \\
+        Conv2D & (None, 48, 48, 3) & 30 \\  
+        MaxPool & (None, 24, 24, 3) & 0 \\
+        Conv2D & (None, 22, 22, 64) & 1792 \\ 
+        MaxPool & (None, 11, 11, 64) & 0 \\
+        Flatten & (None, 7744) & 0 \\
+        Dropout & (None, 7744) & 0 \\
+        Dense & (None, 128) & 991360 \\
+        Dense & (None, 8) & 1032 \\
+    \end{tabularx}
+    \caption{Summary of parking ID neural network}
+    \label{fig:parkingidmodel}
+\end{figure}
+
+\subsubsection{Plate Letters}
+
+The plate letters model was trained on a dataset of >17000 images of plate letters extracted from the simulation environment and automatically labelled using the plate list in the environment.
+
+\begin{figure}[H]
+    \begin{tabularx}{0.9\linewidth}{ 
+         >{\raggedright\arraybackslash}X 
+         >{\raggedright\arraybackslash}X 
+         >{\raggedleft\arraybackslash}X  }
+
+         Layer (type) & Output Shape & Num. Params. \\ 
+        \hline \\
+        Conv2D & (None, 48, 48, 48) & 480 \\  
+        MaxPool & (None, 24, 24, 48) & 0 \\
+        Conv2D & (None, 22, 22, 96) & 41568 \\
+        MaxPool & (None, 11, 11, 96) & 0 \\
+        Flatten & (None, 11616) & 0 \\
+        Dropout & (None, 11616) & 0 \\
+        Dense & (None, 512) & 5945344 \\
+        Dense & (None, 26) & 13338 \\
+        
+    \end{tabularx}
+    \caption{Summary of Plate Letters Model}
+    \label{fig:plateletmodel}
+\end{figure}
+
+\subsubsection{Plate Numbers}
+
+The plate numbers model was trained on a dataset of >17000 images of plate numbers extracted from the simulation environment and automatically labelled using the plate list in the environment.
+
+\begin{figure}[H]
+    \begin{tabularx}{0.9\linewidth}{ 
+         >{\raggedright\arraybackslash}X 
+         >{\raggedright\arraybackslash}X 
+         >{\raggedleft\arraybackslash}X  }
+
+         Layer (type) & Output Shape & Num. Params. \\ 
+        \hline \\
+        Conv2D & (None, 48, 48, 16) & 160 \\  
+        MaxPool & (None, 24, 24, 16) & 0 \\
+        Conv2D & (None, 22, 22, 32) & 4640 \\
+        MaxPool & (None, 11, 11, 32) & 0 \\
+        Flatten & (None, 3872) & 0 \\
+        Dropout & (None, 3872) & 0 \\
+        Dense & (None, 256) & 991488 \\
+        Dense & (None, 10) & 2570 \\
+        
+    \end{tabularx}
+    \caption{Summary of Plate Numbers Model}
+    \label{fig:platenummodel}
+\end{figure}
+
 
 \section{User Interface}
 
