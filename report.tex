@@ -1,4 +1,4 @@
-\documentclass[titlepage]{article}
+\documentclass[titlepage, twocolumn]{article}
 
 \usepackage{graphicx}
 \usepackage{tabularx}
@@ -13,13 +13,13 @@
 \begin{document}
 \maketitle
 
-\begin{abstract}
-    This is the abstract.
-\end{abstract}
-
 \section{Background}
 
+    The final project for Engineering Physics 353 is the creation of a ROS package to control a simulated robot as it attempts to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars [figure?]. The robot must be capable of navigating entirely autonomously while avoiding collisions with pedestrians and other vehicles in the environment. Points were awarded for correctly reporting a license plate over a ROS topic (6 points for plates on the outer ring, and 8 points for plates on the inner ring) and for completing a full lap, and deducted for hitting pedestrians, other cars, or driving off the road. Our team attempted to create a robot that would be primarily capable of very reliably navigating the track and collecting the maximum amount of points. As a secondary objective, we aimed to have the robot complete as quickly as possible, as tie scores would be broken by the robot with the fastest time.
+
 \section{Overall Architecture}
+
+    I'll do this section. 
 
 \section{Navigation}
     Robot navigation was accomplished with an almost entirely classical control system, using minimal neural network-based approaches and instead using manually-tuned computer vision and classical control techniques. 
@@ -59,8 +59,11 @@
             The model was trained with a learning rate of $1 \times 10^{-4}$ and a validation split of 0.2 over 10 epochs. Loss and accuracy curves by epoch are shown in Figure~\ref{fig:grasspavegraphs}.
 
             \begin{figure}
-                \includegraphics[width=\linewidth]{grasspaveloss.png}
-                \includegraphics[width=\linewidth]{grasspaveacc.png}
+                \begin{center}
+                    \includegraphics[width=\linewidth]{grasspaveloss.png}
+                    \includegraphics[width=\linewidth]{grasspaveacc.png}
+                \end{center}
+                
                 \caption{Loss and accuracy of grass and pavement detection network by training epoch.}
                 \label{fig:grasspavegraphs}
             \end{figure}
@@ -85,14 +88,49 @@
                 \label{fig:junctionalg}
             \end{figure}
 
-            In the `Junction wait' state, the state machine waits to detect the truck in the appropriate position to safely start the inner loop navigation. Truck detection is based on a very similar methodology as pedestrian pant detection, using HSV colour thresholding followed by erosion, dilation, and contour finding. The state machine will proceed to the next state (moving into the inner loop) once the truck reaches a position in the frame of $x < 400$ pixels and $y<700 $ pixels, a zone that was experimentally determined safe. These values were able be hardcoded becuase the position of the robot when waiting at the junction remained extremely consistant throughout runs. 
+            In the `Junction wait' state, the state machine waits to detect the truck in the appropriate position to safely start the inner loop navigation. Truck detection is based on a very similar methodology as pedestrian pant detection, using HSV colour thresholding followed by erosion, dilation, and contour finding. The state machine will proceed to the next state (moving into the inner loop) once the truck reaches a position in the frame of $x < 400$ pixels and $y<700 $ pixels, a zone that was experimentally determined safe. These values were able to be hard-coded because the position of the robot when waiting at the junction remained extremely consistent throughout runs. 
 
 
             
     \subsection{Navigation Algorithms}
+
+        During the active navigation states, the navigation node processes each frame from the camera and uses it to determine a steering angle to publish based on an algorithm tailored for the state it is in. The two main types of active navigation nodes, for paved surfaces and grass surfaces employed relatively similar processes to determine steering angles by attempting to find the edge of the track and hold it at a constant bearing using a proportional controller to determine angular control and holding a constant speed. The main difference between the two was the method used to find the edge of the track.
+
+        \subsubsection{Pavement Navigation}
+            
+            During pavement navigation, the edge of the track is found through an image processing pipeline to output a binary image with the edge of the track as white pixels and the rest of the image as black pixels. This binary image is then processed to find the center of the track, which is used to determine the steering angle. The image processing pipeline is shown in Figure~\ref{fig:pavepipeline}. The HSV threshold, greyscale, and binary threshold steps convert our frame into a single binary image that we are able to run edge detection and line finding on, while the dilation and erosion steps remove `holes' in the pavement caused by the environment's 1~m grid lines. Sobel edge detection is used to find the edges of the pavement, and then we crop the image to only include the pavement area of interest, ignoring the sky and trees. 
+            
+            A Hough transform is used to find the lines that best fit the edges, and these lines are then drawn onto a new, blank image which we can then convert to binary and use a simple weighted average to find the centroid of the edge, restricting ourselves to a zone between a certain number of pixels from the bottom of the image - to avoid looking too far into the future or focusing too much on lines immediately close to robot - and to either the left or right side of the image depending on if we are navigating based on the left or right side of the track. 
+
+            We navigate based on the right side in almost all pavement areas, as it does not have any junctions interrupting the lines, but on the left side of the track in the `Pave Navigate Left' state, as we want to follow the left line into the junction in order to transition to the inner loop. 
+
+            \begin{figure}
+                \begin{center}
+                    \includegraphics[width=0.80\linewidth]{pavepipeline.png}
+                \end{center}
+                \caption{Pavement edge detection image processing pipeline.}
+                \label{fig:pavepipeline}
+            \end{figure}
+
+        \subsubsection{Grass Navigation}
+
+            Grass navigation was accomplished with a similar, but more simple pipeline than was used in the pavement navigation, shown in Figure~\ref{fig:grasspipeline}. However, instead of attempting to create lines that fit the edges of the track, we instead use thresholding and other classical techniques to simply isolate the pixels that match the colour of the lines, and then find the average position of the right line. A key step in being able to do this was to pass all frames through a brightening step that brings all images up to a standard contrast, as frames from the camera vary in contrast over different areas of the grassy section. Sobel edge detection is also used as a final step to reduce the impact of any large blocks of pixels in the final image other than the line, as they will only contribute an outline's worth of pixels, rather than the entire block. 
+
+            \begin{figure}
+                \begin{center}
+                    \includegraphics[width=0.3\linewidth]{grasspipeline.png}
+                \end{center}
+                \caption{Grass edge detection image processing pipeline}
+                \label{fig:grasspipeline}
+            \end{figure}
+
     \subsection{Performance}
+        Through testing and iteration, we found our navigation system to be reliable once tuned, but not necessarily robust to modifications. For instance, we were able to run hundreds of laps on the track without any failures, but would not be able to change the speed without significant trial-and-error based retuning of multiple components and values. Additionally, we found that the navigation system was sensitive to the battery status of the computer the simulation was running on, and would routinely fail if the computer was not charged. We also encountered reliability challenges as we increased the speed of the robot. On the pavement sections, we were not able to reliably exceed 0.5~m/s, and on the grass sections, we were not able to reliably exceed 0.3~m/s without the robot losing the line and failing. We believe this to be a result of amount of track that the robot would cover between frames - the design of this navigation system, since it relies only on the current frame, is unable to use data about its previous navigation inputs or outputs to determine current outputs, and thus is unable to compensate for the robot's momentum. While these speed limits bounded the performance and lap time of the robot, we still found it extremely reliable within the limits of its maximum speed.
+
 
 \section{License Plate Detection}
+
+\section{User Interface}
 
 \section{Conclusion}
 
