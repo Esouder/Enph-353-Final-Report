@@ -52,7 +52,7 @@ urlcolor=cyan,
 
 \section{Overall Architecture}
 
-    The robot control software was divided into two ROS packages - one which managed the navigation of the robot and guided it around the track, and one which managed the license plate detection and reporting. The navigation package was composed of a state machine node and a navigation node, which were responsible for controlling the robot's movement around the track, while the plate detection packaged contained a single node responsible for detecting license plates and reporting them over a ROS topic. Additionally, a graphical user interface used for debugging and running the robot was developed and stored in a separate repository. The overall architecture of the robot is shown in Figure~\ref{fig:architecture}. 
+    The robot control software was divided into two ROS packages - one which managed the navigation of the robot and guided it around the track, and one which managed the license plate detection and reporting. The navigation package (\href{https://github.com/Esouder/competition_controller}{GitHub link}) was composed of a state machine node and a navigation node, which were responsible for controlling the robot's movement around the track, while the plate detection package (\href{https://github.com/nvanrumpt/353_plate_reader}{GitHub link}) contained a single node responsible for detecting license plates and reporting them over a ROS topic. Additionally, a graphical user interface used for debugging and running the robot was developed and stored in a \href{https://github.com/nvanrumpt/353RobotCompetitionGUI}{separate repository}. The overall architecture of the robot is shown in Figure~\ref{fig:architecture}. 
 
     \begin{figure}
         \centering
