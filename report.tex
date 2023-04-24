@@ -4,6 +4,7 @@
 \usepackage{hyperref}
 \usepackage{tabularx}
 \usepackage{titling}
+\usepackage{subcaption}
 \graphicspath{{./figures}}
 
 \hypersetup{
@@ -24,7 +25,7 @@ urlcolor=cyan,
 \begin{document}
 
 \title{Engineering Physics 353 Final Report}
-\subtitle{Team 14 - ``Team 4"}
+\subtitle{Team 15}
 \author{Nathan Van Rumpt, Eric Souder}
 \date{April 2023}
 
@@ -59,7 +60,7 @@ urlcolor=cyan,
     The navigation controller was composed of two ROS nodes: The `State Machine' node was composed of a finite state machine and the `Navigate' node contained a set of navigation algorithms for different scenarios, selecting an appropriate algorithm based on the state reported by the state machine. States were communicated internally between the two nodes via a ROS topic.
     
     \subsection{State Machine}
-        The finite state machine responsible for controlling the robot's navigation state was composed primarily of a number of state classes, representing a unique navigational state and a state machine class responsible for orchestrating the transitions between them. Each state class, such as the `Pave Navigate' or `Junction Wait' states, is a subclass of an abstract parent class which defines an `evaluate transition' interface responsible for determining the next state to enter and either returns itself to remain in the current state or generates a new state object to transition into. The state machine class calls this method each frame to determine which state the robot should be in, and then broadcasts that state to the navigation node via a ROS topic. The overall state machine diagram is shown in Figure~\ref{fig:statemachine}.
+        The finite state machine responsible for controlling the robot's navigation state was composed primarily of a number of state classes, representing a unique navigational state and a state machine class responsible for orchestrating the transitions between them. Each state class, such as the `Pave Navigate' or `Junction Wait' states, is a subclass of an abstract parent class which defines an `evaluate transition' interface responsible for determining the next state to enter and either returns itself (to remain in the current state) or generates a new state object to transition into. The state machine class calls this method each frame to determine which state the robot should be in, and then broadcasts that state to the navigation node via a ROS topic. The overall state machine diagram is shown in Figure~\ref{fig:statemachine}.
 
         \begin{figure}
             \includegraphics[width=\linewidth]{statemachine.png}
@@ -67,10 +68,10 @@ urlcolor=cyan,
             \label{fig:statemachine}
         \end{figure}
 
-        Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interpets each frame and makes a transition decision based on it.
+        Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interprets each frame and makes a transition decision based on it.
 
         \subsubsection{Pavement and Grass Detection}
-            In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemeted within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. Data was aqquired by by manually driving the vehicle around with a simple ros node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by signifigant compression, images were resized to 0.025 times their original width and 0.05 times their original height, this resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
+            In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemeted within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. Data was acquired by manually driving the vehicle around with a simple ROS node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by significant compression, images were resized to 0.025 times their original width and 0.05 times their original height, this resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
 
             The simple model was composed of only three layers: An input flatten layer, a hidden dense layer, and a output dense layer composed of a single neuron, with a total of 2,666,689 trainable parameters, as shown in Figure~\ref{fig:surfacedetectmodel}.
             \begin{figure}
@@ -92,10 +93,15 @@ urlcolor=cyan,
 
             \begin{figure}
                 \begin{center}
-                    \includegraphics[width=\linewidth]{grasspaveloss.png}
-                    \includegraphics[width=\linewidth]{grasspaveacc.png}
+                    \begin{subfigure}{0.5\linewidth}
+                        \centering
+                        \includegraphics[width=\linewidth]{grasspaveloss.png}
+                      \end{subfigure}%
+                      \begin{subfigure}{0.5\linewidth}
+                        \centering
+                        \includegraphics[width=\linewidth]{grasspaveacc.png}
+                      \end{subfigure}
                 \end{center}
-                
                 \caption{Loss and accuracy of grass and pavement detection network by training epoch.}
                 \label{fig:grasspavegraphs}
             \end{figure}
@@ -103,21 +109,39 @@ urlcolor=cyan,
             Because of the small size and binary output of the network, litle work was deemed neccesary to validate it's performance and there was no need for extensive eror analysis. A robot was manually driven around the track and the output of the network's predictions was monitured to ensure it was sensible before it was integrated with the state machine to trigger transitions between pavement and grass navigation states.
 
         \subsubsection{Crosswalk and Pedestrian Detection}
-            When navigating over the first section of paved track, two crosswalks with pedestrians must be safely crossed without hitting any pedestrians. The robot must detect the presence of a crosswalk and transition to a `Crosswalk Wait` state in order to avoid hitting a pedestrian. Detection of both crosswalks and pedestrians is performed by methods within the `PedestrianDetector' class. First, crosswalks were detected using simple HSV colour thresholding. [figure here]. A crosswalk was considered 'detected' when 1500 total pixels matching the range of colours associated with the red crosswalk stop line were detected in the bottom 100 rows of the image. Although 1500 pixels is less than 2 full horizontal rows - much less than the size of the detection area - the need for a large area was the result of the relative high velocity which meant that the robot may only receive one or two frames to detect the crosswalk, so the larger area was chosen as a compromise between guaranteeing detection of the stop line and constantly stopping at around the same location. It also provides detection capability if the line is approached at an angle. This hedges against a possible 10 point loss from hitting a pedestrian of other parts of the navigation system fail.
+            When navigating over the first section of paved track, two crosswalks with pedestrians must be safely crossed without hitting any pedestrians. The robot must detect the presence of a crosswalk and transition to a `Crosswalk Wait` state in order to avoid hitting a pedestrian. Detection of both crosswalks and pedestrians is performed by methods within the `PedestrianDetector' class. First, crosswalks were detected using simple HSV colour thresholding. A crosswalk was considered 'detected' when 1500 total pixels matching the range of colours associated with the red crosswalk stop line were detected in the bottom 100 rows of the image. Although 1500 pixels is less than 2 full horizontal rows - much less than the size of the detection area - the need for a large area was the result of the relative high velocity which meant that the robot may only receive one or two frames to detect the crosswalk, so the larger area was chosen as a compromise between guaranteeing detection of the stop line and constantly stopping at around the same location. It also provides detection capability if the line is approached at an angle. This hedges against a possible 10 point loss from hitting a pedestrian of other parts of the navigation system fail.
 
-            Once the crosswalk was detected and the robot was in the `Crosswalk Wait' state, we must detect pedestrians to determine when it is safe to cross. Pedestrians were detected using HSV thresholding to detect their blue jeans, similarly to the crosswalk detection. [figure here]. However, since the location (not just boolean presence) of the pedestrians was needed, erosion and dilation were used to merge the thresholded areas together into fewer, larger `blobs'. The algorithm then finds the contours of each `blob' and selects the largest as the most likely choice to be the pedestrian. Each frame, A bounding box is drawn around it, and its position is found.
+            Once the crosswalk was detected and the robot was in the `Crosswalk Wait' state, we must detect pedestrians to determine when it is safe to cross. Pedestrians were detected using HSV thresholding to detect their blue jeans, similarly to the crosswalk detection. This process is outlined in Figure~\ref{fig:pants}. However, since the location (not just boolean presence) of the pedestrians was needed, erosion and dilation were used to merge the thresholded areas together into fewer, larger `blobs'. The algorithm then finds the contours of each `blob' and selects the largest as the most likely choice to be the pedestrian. Each frame, A bounding box is drawn around it, and its position is found.
 
-            As a result of the repeatability of our pavement navigation algorithms, the edges of the crosswalk were able to be hard-coded into the pedestrian detector. The state machine tracks the position of the detector, and waits for it to be found in the crossawlk and then to exit the crosswalk. At this point, we can gurantee the maximum amount of time that the pedestrian will not be in the crosswalk, adnd the state machine is then able to transition to a `Crosswalk Traverse' sprint across the crosswalk before returning to the normal pavement navigation state. 
+            \begin{figure}
+                \includegraphics[width=\linewidth]{pants.png}
+                \caption{Major steps in pants detection. Left-to-right, top-to-bottom: Input image, HSV thresholding, erosion \& dilation, bounding box.}
+                \label{fig:pants}
+            \end{figure}
+
+            As a result of the repeatability of our pavement navigation algorithms, the edges of the crosswalk were able to be hard-coded into the pedestrian detector. The state machine tracks the position of the detector, and waits for it to be found in the crosswalk and then to exit the crosswalk. At this point, we can guarantee the maximum amount of time that the pedestrian will not be in the crosswalk, and the state machine is then able to transition to a `Crosswalk Traverse' sprint across the crosswalk before returning to the normal pavement navigation state. 
             
         \subsubsection{Junction and Truck Detection}
             In order to transition to the inner loop of track, the robot must turn through the junction to the inner loop, stop within the junction, wait for the truck to pass safely, and then proceed into the junction. This is accomplished through state transitions using methods with the `JunctionDetector' class.
 
-            When the vehicle exits the grass segment, the state machine switches to the `Pave Navigate Left' mode, tracking the left side of the track rather than the right side as it does for other pavement navigation states. After three seconds of this, the state machine begins attempting to go through a procedure to see if has reached the junction with the inner track by monitoring the width of the pavement in front of it. The pavement width is determined by HSV thresholding to the colour of the pavement and counting the distance between the right- and leftmost valid pixels at a horizontal line 150 pixels up from the bottom of the frame. The algorithm used to evaluate if we are in the junction is shown in figure ~\ref{fig:junctionalg}, which works by exploiting the charachteristic pattern of the pavement appearing to widen, narrow, and then widen again as we turn into the junction [figure here!]. The state machine then transitions to a stopped `Junction Wait' state. 
+            When the vehicle exits the grass segment, the state machine switches to the `Pave Navigate Left' mode, tracking the left side of the track rather than the right side as it does for other pavement navigation states. After three seconds of this, the state machine begins attempting to go through a procedure to see if has reached the junction with the inner track by monitoring the width of the pavement in front of it. The pavement width is determined by HSV thresholding to the colour of the pavement and counting the distance between the right- and leftmost valid pixels at a horizontal line 150 pixels up from the bottom of the frame. The algorithm used to evaluate if we are in the junction is shown in Figure ~\ref{fig:junctionalg}, which works by exploiting the characteristic pattern of the pavement appearing to widen, narrow, and then widen again as we turn into the junction, as seen in Figure~\ref{fig:charwidth}. The state machine then transitions to a stopped `Junction Wait' state. 
 
             \begin{figure}
-                \includegraphics[width=\linewidth]{junctiondiagram.png}
-                \caption{Flowchart showing junction detection algorithm based on pavement width.}
+                \begin{center}
+                    \begin{subfigure}{0.5\linewidth}
+                        \includegraphics[width=\linewidth]{charwidth.png}
+                        \subcaption{Charachteristic pattern of widening (1), narrowing (2), and widening again (3) as we follows the inner line (turquoise) into the junction.}
+                        \label{fig:charwidth}
+                      \end{subfigure}%
+                      \begin{subfigure}{0.5\linewidth}
+                        \centering
+                        \includegraphics[width=\linewidth]{junctiondiagram.png}
+                        \subcaption{Flowchart showing junction detection algorithm based on pavement width.}
                 \label{fig:junctionalg}
+                      \end{subfigure}
+                \end{center}
+                \caption{Junction detection algorithm based on pavement width.}
+                \label{fig:junctiondetect}
             \end{figure}
 
             In the `Junction wait' state, the state machine waits to detect the truck in the appropriate position to safely start the inner loop navigation. Truck detection is based on a very similar methodology as pedestrian pant detection, using HSV colour thresholding followed by erosion, dilation, and contour finding. The state machine will proceed to the next state (moving into the inner loop) once the truck reaches a position in the frame of $x < 400$ pixels and $y<700 $ pixels, a zone that was experimentally determined safe. These values were able to be hard-coded because the position of the robot when waiting at the junction remained extremely consistent throughout runs. 
@@ -144,26 +168,35 @@ urlcolor=cyan,
                 \label{fig:pavepipeline}
             \end{figure}
 
+            \begin{figure}
+                \includegraphics[width=\linewidth]{lines.png}
+                \caption{Major steps in pavement line following. Left-to-right, top-to-bottom: Input image; thresholding, line-finding, output lines}
+                \label{fig:pants}
+            \end{figure}
+
         \subsubsection{Grass Navigation}
 
             Grass navigation was accomplished with a similar, but more simple pipeline than was used in the pavement navigation, shown in Figure~\ref{fig:grasspipeline}. However, instead of attempting to create lines that fit the edges of the track, we instead use thresholding and other classical techniques to simply isolate the pixels that match the colour of the lines, and then find the average position of the right line. A key step in being able to do this was to pass all frames through a brightening step that brings all images up to a standard contrast, as frames from the camera vary in contrast over different areas of the grassy section. Sobel edge detection is also used as a final step to reduce the impact of any large blocks of pixels in the final image other than the line, as they will only contribute an outline's worth of pixels, rather than the entire block. 
 
             \begin{figure}
                 \begin{center}
-                    \includegraphics[width=0.3\linewidth]{grasspipeline.png}
+                    \includegraphics[width=0.5\linewidth]{grass-photos.png}
                 \end{center}
-                \caption{Grass edge detection image processing pipeline}
+                \caption{Grass edge detection image processing pipeline. Key steps shown, from top to bottom, are the input image, brightening, HSV thresholding, cropping and edge detection, and final output.}
                 \label{fig:grasspipeline}
             \end{figure}
+
+    \subsection{Plate Reader Commands} \label{platereadercontrol}
+
+        It was desired to be able to get better readings on the plates. This was accomplished by recieving a limited set of commands from the plate reader node. Whenever the plate reader would detect a plate, it would send a command to the contoller to move into a StopTurn{Left/Right} state. 
+    
+        \red{Nathan to fill this out more.}
+
 
     \subsection{Performance}
         Through testing and iteration, we found our navigation system to be reliable once tuned, but not necessarily robust to modifications. For instance, we were able to run hundreds of laps on the track without any failures, but would not be able to change the speed without significant trial-and-error based retuning of multiple components and values. Additionally, we found that the navigation system was sensitive to the battery status of the computer the simulation was running on, and would routinely fail if the computer was not charged. We also encountered reliability challenges as we increased the speed of the robot. On the pavement sections, we were not able to reliably exceed 0.5~m/s, and on the grass sections, we were not able to reliably exceed 0.3~m/s without the robot losing the line and failing. We believe this to be a result of amount of track that the robot would cover between frames - the design of this navigation system, since it relies only on the current frame, is unable to use data about its previous navigation inputs or outputs to determine current outputs, and thus is unable to compensate for the robot's momentum. While these speed limits bounded the performance and lap time of the robot, we still found it extremely reliable within the limits of its maximum speed.
     
-    \subsection{Plate Reader Commands} \label{platereadercontrol}
 
-    It was desired to be able to get better readings on the plates. This was accomplished by recieving a limited set of commands from the plate reader node. Whenever the plate reader would detect a plate, it would send a command to the contoller to move into a StopTurn{Left/Right} state. 
-
-    \red{Nathan to fill this out more.}
 
     
 
