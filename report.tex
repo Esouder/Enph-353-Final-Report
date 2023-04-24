@@ -23,6 +23,9 @@ urlcolor=cyan,
     \vskip0.5em}%
 }
 
+\newcolumntype{b}{X}
+\newcolumntype{s}{>{\hsize=.5\hsize}X}
+
 \begin{document}
 
 \title{Engineering Physics 353 Final Report}
@@ -39,13 +42,13 @@ urlcolor=cyan,
 
 \section{Background}
 
-    The final project for Engineering Physics 353 is the creation of ROS packages to control a simulated robot as it attempts to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars. 
+    The final project for Engineering Physics 353 is the creation of ROS packages to control a simulated robot to drive around a streetscape - composed of an inner and outer loop - and record license plate numbers off of parked cars. 
     
     \begin{figure}
     \centering
-    \includegraphics[width=0.7\linewidth]{Competition Space.png}
+    \includegraphics[width=0.8\linewidth]{Competition Space.png}
     \caption{Competition track layout}
-    \label{fig:label}
+    \label{fig:compspace}
     \end{figure}
     
     The robot must be capable of navigating entirely autonomously while avoiding collisions with pedestrians and other vehicles in the environment. Points were awarded for correctly reporting a license plate over a ROS topic (6 points for plates on the outer ring, and 8 points for plates on the inner ring) and for completing a full lap, and deducted for hitting pedestrians, other cars, or driving off the road. Our team attempted to create a robot that would be primarily capable of very reliably navigating the track and collecting the maximum amount of points. As a secondary objective, we aimed to have the robot complete as quickly as possible, as tie scores would be broken by the robot with the fastest time.
@@ -60,14 +63,13 @@ urlcolor=cyan,
         \caption{Overall architecture of the robot control software.}
         \label{fig:architecture}
     \end{figure}
+
 \section{Navigation}
     Robot navigation was accomplished with an almost entirely classical control system, using minimal neural network based approaches and instead using manually tuned computer vision and classical control techniques. 
-
     The navigation controller was composed of two ROS nodes: The `State Machine' node was composed of a finite state machine and the `Navigate' node contained a set of navigation algorithms for different scenarios, selecting an appropriate algorithm based on the state reported by the state machine. States were communicated internally between the two nodes via a ROS topic.
     
     \subsection{State Machine}
         The finite state machine responsible for controlling the robot's navigation state was composed primarily of a number of state classes, representing a unique navigational state and a state machine class responsible for orchestrating the transitions between them. Each state class, such as the `Pave Navigate' or `Junction Wait' states, is a subclass of an abstract parent class which defines an `evaluate transition' interface responsible for determining the next state to enter and either returns itself (to remain in the current state) or generates a new state object to transition into. 
-        
         The state machine class calls this method each frame to determine which state the robot should be in, and then broadcasts that state to the navigation node via a ROS topic. The overall state machine diagram is shown in Figure~\ref{fig:statemachine}.
 
         \begin{figure}
@@ -81,9 +83,7 @@ urlcolor=cyan,
 
         \subsubsection{Pavement and Grass Detection}
             In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemented within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. 
-            
             Data was acquired by manually driving the vehicle around with a simple ROS node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by significant compression. Images were resized to 0.025 times their original width and 0.05 times their original height. This resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
-
             The simple model was composed of only three layers: An input flatten layer, a hidden dense layer, and an output dense layer composed of a single neuron, with a total of 2,666,689 trainable parameters, as shown in Figure~\ref{fig:surfacedetectmodel}.
             \begin{figure}
                 \begin{tabularx}{0.9\linewidth}{ 
@@ -204,7 +204,7 @@ urlcolor=cyan,
                 \begin{center}
                     \includegraphics[width=0.5\linewidth]{grass-photos.png}
                 \end{center}
-                \caption{Grass edge detection image processing pipeline. Key steps shown, from top to bottom, are the input image, brightening, HSV thresholding, cropping and edge detection, and final output.}
+                \caption{Grass edge detection image processing pipeline. Input image, brightening, HSV thresholding, cropping and edge detection, and final output.}
                 \label{fig:grasspipeline}
             \end{figure}
 
@@ -267,9 +267,9 @@ The parking ID model was trained on a dataset of 400 parking IDs extracted from 
 
 \begin{figure}
     \begin{tabularx}{0.9\linewidth}{ 
-         >{\raggedright\arraybackslash}X 
-         >{\raggedright\arraybackslash}X 
-         >{\raggedleft\arraybackslash}X  }
+         >{\raggedright\arraybackslash}s 
+         >{\raggedright\arraybackslash}b 
+         >{\raggedleft\arraybackslash}s  }
 
          Layer (type) & Output Shape & Num. Params. \\ 
         \hline \\
@@ -311,9 +311,9 @@ The plate letters model was trained on a dataset of 17000 plate character images
 
 \begin{figure}
     \begin{tabularx}{0.9\linewidth}{ 
-         >{\raggedright\arraybackslash}X 
-         >{\raggedright\arraybackslash}X 
-         >{\raggedleft\arraybackslash}X  }
+         >{\raggedright\arraybackslash}s 
+         >{\raggedright\arraybackslash}b 
+         >{\raggedleft\arraybackslash}s  }
 
          Layer (type) & Output Shape & Num. Params. \\ 
         \hline \\
@@ -341,9 +341,9 @@ The plate numbers model was trained on a dataset of 17000 images of plate charac
 
 \begin{figure}
     \begin{tabularx}{0.9\linewidth}{ 
-         >{\raggedright\arraybackslash}X 
-         >{\raggedright\arraybackslash}X 
-         >{\raggedleft\arraybackslash}X  }
+         >{\raggedright\arraybackslash}s 
+         >{\raggedright\arraybackslash}b 
+         >{\raggedleft\arraybackslash}s  }
 
          Layer (type) & Output Shape & Num. Params. \\ 
         \hline \\
