@@ -36,8 +36,8 @@ urlcolor=cyan,
     
     \begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{Competition Space.png}
-    \caption{Competetion track layout}
+    \includegraphics[width=0.9\linewidth]{Competition Space.png}
+    \caption{Competition track layout}
     \label{fig:label}
     \end{figure}
     
@@ -48,7 +48,8 @@ urlcolor=cyan,
     The robot control software was divided into two ROS packages - one which managed the navigation of the robot and guided it around the track, and one which managed the license plate detection and reporting. The navigation package was composed of a state machine node and a navigation node, which were responsible for controlling the robot's movement around the track, while the plate detection packaged contained a single node responsible for detecting license plates and reporting them over a ROS topic. Additionally, a graphical user interface used for debugging and running the robot was developed and stored in a separate repository. The overall architecture of the robot is shown in Figure~\ref{fig:architecture}. 
 
     \begin{figure}
-        \includegraphics[width=\linewidth]{architecture.png}
+        \centering
+        \includegraphics[width=0.9\linewidth]{architecture.png}
         \caption{Overall architecture of the robot control software.}
         \label{fig:architecture}
     \end{figure}
@@ -67,10 +68,10 @@ urlcolor=cyan,
             \label{fig:statemachine}
         \end{figure}
 
-        Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interpets each frame and makes a transition decision based on it.
+        Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interprets each frame and makes a transition decision based on it.
 
         \subsubsection{Pavement and Grass Detection}
-            In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemeted within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. Data was aqquired by by manually driving the vehicle around with a simple ros node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by signifigant compression, images were resized to 0.025 times their original width and 0.05 times their original height, this resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
+            In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemented within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. Data was acquired by by manually driving the vehicle around with a simple ros node activated to save each camera frame. Because of the goal of simplicity for the neural network, all images were preprocessed by significant compression, images were resized to 0.025 times their original width and 0.05 times their original height, this resulted in a 36 by 32 image, which was further cropped to remove the top 18 rows of pixels, focusing only on the ground and removing the area above the horizon.
 
             The simple model was composed of only three layers: An input flatten layer, a hidden dense layer, and a output dense layer composed of a single neuron, with a total of 2,666,689 trainable parameters, as shown in Figure~\ref{fig:surfacedetectmodel}.
             \begin{figure}
@@ -100,7 +101,7 @@ urlcolor=cyan,
                 \label{fig:grasspavegraphs}
             \end{figure}
 
-            Because of the small size and binary output of the network, litle work was deemed neccesary to validate it's performance and there was no need for extensive eror analysis. A robot was manually driven around the track and the output of the network's predictions was monitured to ensure it was sensible before it was integrated with the state machine to trigger transitions between pavement and grass navigation states.
+            Because of the small size and binary output of the network, little work was deemed necessary to validate it's performance and there was no need for extensive error analysis. A robot was manually driven around the track and the output of the network's predictions was monitored to ensure it was sensible before it was integrated with the state machine to trigger transitions between pavement and grass navigation states.
 
         \subsubsection{Crosswalk and Pedestrian Detection}
             When navigating over the first section of paved track, two crosswalks with pedestrians must be safely crossed without hitting any pedestrians. The robot must detect the presence of a crosswalk and transition to a `Crosswalk Wait` state in order to avoid hitting a pedestrian. Detection of both crosswalks and pedestrians is performed by methods within the `PedestrianDetector' class. First, crosswalks were detected using simple HSV colour thresholding. [figure here]. A crosswalk was considered 'detected' when 1500 total pixels matching the range of colours associated with the red crosswalk stop line were detected in the bottom 100 rows of the image. Although 1500 pixels is less than 2 full horizontal rows - much less than the size of the detection area - the need for a large area was the result of the relative high velocity which meant that the robot may only receive one or two frames to detect the crosswalk, so the larger area was chosen as a compromise between guaranteeing detection of the stop line and constantly stopping at around the same location. It also provides detection capability if the line is approached at an angle. This hedges against a possible 10 point loss from hitting a pedestrian of other parts of the navigation system fail.
@@ -161,16 +162,12 @@ urlcolor=cyan,
     
     \subsection{Plate Reader Commands} \label{platereadercontrol}
 
-    It was desired to be able to get better readings on the plates. This was accomplished by recieving a limited set of commands from the plate reader node. Whenever the plate reader would detect a plate, it would send a command to the contoller to move into a StopTurn{Left/Right} state. 
-
-    \red{Nathan to fill this out more.}
-
-    
+    An item noticed during development was that while driving could be stable at relatively high speeds, good readings of the plates would require a more conservative pace. This constraint was mediated by recieving a set of commands from the plate reader node. Whenever the plate reader would detect a plate that we do not have a sufficient number of good readings on, it would send a command to the contoller to move into a StopTurn{Left/Right} state. The state machine will save the state it is currently in, and do as commanded by the plate reader for a specified period of time or until commanded to drive again, in which case it will return from whence it came. This additional functionality allowed the system to navigate at a significantly faster pace without missing specific plates.
 
 
 \section{License Plate Detection}
 
-Plate detection was accomplished using a series of handcrafted filters to extract the individual plate character bounding boxes. This was chosen since it gave a high degree of control over the output, and allowed us to easily tune the system to work on the specific plates used in the competition. The pipeline is shown in Figure~\ref{fig:platepipeline}.
+Plate detection was accomplished using a series of handcrafted filters to extract the individual plate character bounding boxes. This was chosen since it gave a high degree of control over the output, and allowed us to easily tune the system to work on the specific plates used in the competition. The pipeline is shown in Figure~\ref{fig:platepipeline}. Within the plate reader there also exists a tracking system for the predicted plates and ensure that only the most confident predictions are reported to the license plate topic.
 
 \begin{figure}[H]
 \centering
@@ -218,7 +215,7 @@ The plate identification algorithm uses a total of 3 neural networks. One to ide
 
 \subsubsection{Parking ID model}
 
-The parking ID model was trained on a dataset of 400 images of parking IDs extracted from the simulation environment and manually labelled. 
+The parking ID model was trained on a dataset of 400 images of parking IDs extracted from the simulation environment and manually labelled. There was very little optimization put into this network since it was not found to be a bottleneck, and was extremely reliable with a small set of data.
 
 \begin{figure}[H]
     \begin{tabularx}{0.9\linewidth}{ 
@@ -243,7 +240,14 @@ The parking ID model was trained on a dataset of 400 images of parking IDs extra
 
 \subsubsection{Plate Letters}
 
-The plate letters model was trained on a dataset of 17000 images of plate letters extracted from the simulation environment and automatically labelled using the plate list in the environment.
+The plate letters model was trained on a dataset of 17000 images of plate characters extracted from the simulation environment and automatically labelled using the plate list in the environment. The basis of this model was using the example from the character detection lab, and optimized for accuracy and size. In particular, to deal with angled characters that occasionally occurred on the `SFU hill', a deeper initial convolution layer and larger fully connected layer was used. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Letters.png}
+    \caption{Dataset of letters trained on}
+    \label{fig:letters}
+\end{figure}
 
 \begin{figure}[H]
     \begin{tabularx}{0.9\linewidth}{ 
@@ -267,9 +271,29 @@ The plate letters model was trained on a dataset of 17000 images of plate letter
     \label{fig:plateletmodel}
 \end{figure}
 
+There were many iterations of this network and it by far required the most amount of tweaking to increase the accuracy without significantly increasing memory size and computation speed. The biggest issue that required resolving was cutting off the edges of letters which would make them appear different than they were. Rather than resolve this on the network side, more optimization was done to the thresholding and extraction system before the network (such as expanding the bounding boxes before passing the letter images into the network). The top losses displayed in Figure \ref{fig:lettersloss} show some of these cut-off letters. After the decision to expand the bounding boxes, much of the most obvious training examples of the cutoff was removed to ensure the network would not be dedicating a significant portion of its size to identifying these obscure edge cases, however the problem was also solved by just piling on tons more new data to make these edge cases more insignificant.
+
+Additionally, the decision to use the greyscale and normalized histogram of the letters was motivated by reducing the size of this network, since it was otherwise requiring over 3x the number of parameters to get reasonably accurate values.  
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{LetterTopLoss.png}
+    \caption{Top losses for letter set}
+    \label{fig:lettersloss}
+\end{figure}
+
+
+
 \subsubsection{Plate Numbers}
 
-The plate numbers model was trained on a dataset of 17000 images of plate numbers extracted from the simulation environment and automatically labelled using the plate list in the environment.
+The plate numbers model was trained on a dataset of 17000 images of plate charcters extracted from the simulation environment and automatically labelled using the plate list in the environment. This model is very similar in structure to the letter network, but smaller in size since the number of characters to identify is much lower. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Numbers.png}
+    \caption{Dataset of numbers trained on}
+    \label{fig:numbers}
+\end{figure}
 
 \begin{figure}[H]
     \begin{tabularx}{0.9\linewidth}{ 
@@ -293,19 +317,32 @@ The plate numbers model was trained on a dataset of 17000 images of plate number
     \label{fig:platenummodel}
 \end{figure}
 
-\subsection{Data Collection}
+The top losses for this network also tend to consist of characters that have not been correctly extracted from the environment, and improvements to the extraction algorithm reduced the frequency of these errors. 
 
-The data collection process was automated using the simulation environment. The first stage was to get an identification network working mostly accurate, then add more data on characters that were misidentified. In the first stage, the simulation was ran and all charcter images collected and labelled (using the plate csv file in the simulation configuration file). A shell script was written to automatically start, run, and stop the simuation and controllers so that data collection could run autonomously. (See the utilities \href{https://github.com/nvanrumpt/robot_controller_utils2/blob/master/scripts/repeat_runsim.sh}{Github repo} for the file.) Once a sufficient quantity of images were collected, the networks were trained and integrated into the plate reader. In the second stage, only the characters that were misidentified were collected. This process was repeated many times until misidentified characters were an infrequent occurence.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{NumTopLoss.png}
+    \caption{Top losses for number set}
+    \label{fig:numsloss}
+\end{figure}
+
+\subsection{Data Collection} \label{platedata}
+
+The data collection process was conducted entirely using the simulation environment and automated as much as possible. This was chosen to get the most consistent data possible, and minimize the likelihood of a harsh transition from generated to true data. The first stage of collection was to get an identification network working mostly accurate, then secondly add more data on characters that were misidentified. In the first stage, the simulation was ran and all charcter images collected and labelled (using the plate csv file in the simulation configuration file). A shell script was written to automatically start, run, and stop the simuation and controllers so that data collection could run autonomously. (See the utilities \href{https://github.com/nvanrumpt/robot_controller_utils2/blob/master/scripts/repeat_runsim.sh}{Github repo} for the script.) Once a sufficient quantity of images were collected, the networks were trained and integrated into the plate reader. In the second stage, only the characters that were misidentified were collected. The process of collecting error images, retraining, and running again was conducted until misidentified characters were an infrequent occurence.
+
+\subsection{Performance}
+
+Utilizing the data collection tools talked about in section \ref{platedata}, the accuracy of the overall algorithm was tracked with the motivation of improving the system. Over the course of 40 runs, with about 4000 character readings, the algorithm only misidentified 10 characters - giving it an estimated accuracy of 99.8\%. However even with these errors, the system boasted a {\bf perfect} correct plate reporting record as in all cases there were more correct readings of the plate to outweigh the error. This stellar of a performance does indicate some simplification could be possible for the networks, but with the amount of time remaining for the project, further changes to the system was not desired.
 
 \subsection{Controller Communication}
 
-Whenever the plate reader gets a good reading on a plate, it send a command to the controller to stop (and turn in the direction of the plate). This helps ensure that even when driving quickly, the reader can get a sufficient number of readings at each parking ID to be confident in the corresponding plate for that location. 
+At speeds above 0.4m/s it was noted that the plate reader tended to only recieve a single clear frame to get a reading on the plate. Since driving at higher speeds was desired, a communication link between the two was necessary. Whenever the plate reader gets a good reading on a plate, it send a command to the controller to stop (and turn in the direction of the plate). This helps ensure that even when driving quickly, the reader can get a sufficient number of readings at each parking ID to be confident in the corresponding plate for that location. 
 
-The plate reader also sends a `done' command to the controller when the final plate has been read confidently. Ideally this would be sent once a good reading had been done on all the plates, but that would require an inner-loop to outer-loop transition, so this was neglected in favour of relying on reading all the plates correctly in the first pass. For more details on the controller side, see section \ref{platereadercontrol}.
+The plate reader also sends a `done' command to the controller when the final plate has been read confidently. Ideally this would be sent once a good reading had been done on all the plates, but that would require an inner-loop to outer-loop transition, and with limited time, this was neglected in favour of relying on reading all the plates correctly in the first pass. For more details on the controller side of this communication, see section \ref{platereadercontrol}.
 
 \section{User Interface}
 
-The user interface is a simple PyQT5 application to display the relevant information from the simulation and controllers. This application makes it easy to see the current state of the simulation and the controllers, and to start and stop the controllers, as well as debugging issues that may arise. The user interface code can be found on github at \href{https://github.com/nvanrumpt/353RobotCompetitionGUI}{nvanrumpt/353RobotCompetitionGUI}.
+The user interface is a simple PyQT5 application to display the relevant information from the simulation and controllers. This application makes it easy to see the current state of the simulation and the controllers, to start and stop the controllers, as well as debugging issues that may arise. The user interface code can be found on github at \href{https://github.com/nvanrumpt/353RobotCompetitionGUI}{nvanrumpt/353RobotCompetitionGUI}.
 
 \begin{figure}[H]
 \centering
@@ -314,7 +351,8 @@ The user interface is a simple PyQT5 application to display the relevant informa
 \label{fig:UI}
 \end{figure}
 
-The largest window can display any image that is published by the plate reader, the controller, or the navigator. Most commonly these are the annotated image from the plate reader, the navigation annotated image, and the pedestrian/car detector. There is a subscriber bound to each of the image topics that will update the displayed image (if it is the one selected by the dropdown). To add additional images one just needs to add the topic name to the dropdown and code a subscriber to the topic.
+The largest window can display any image that is published by the plate reader, the controller, or the navigator. Most commonly these are the annotated image from the plate reader, the navigation annotated image, and the pedestrian/car detector. There is a subscriber bound to each of the image topics that will update the displayed image (if it is the one selected by the dropdown). Each image is resized to match the dimensions of the image label in the UI to ensure that the display is consistent and can be adjusted without regard for the format of the incoming images (currently the images are downsized to 960x540).
+To add additional images one just needs to add the topic name to the dropdown and code a subscriber to the topic.
 
 The bottom of the UI displays the flattened back of the car, the plate mask, and the images that are passed into the plate identification networks. Also shown is the plate list that has been read, with the predicted plates, the number of good readings, and the confidence of the predictions.
 
@@ -322,6 +360,6 @@ The final aspect of the UI are the buttons that allow the user to start the cont
 
 \section{Conclusion}
 
-\red{Nathan to do}
+An autonomous driving and plate identification system was created to control a simulated robot within a streetscape environment to collect license plates off parked cars. The driving system was accomplished using primarily classical techniques, and the plate reading also utilizing as much filtering as possible to lighten the neural network computation requirements. This project provided significant hands-on experience with machine learning, ROS, gazebo, and development of custom tools to monitor and improve the algorithms being developed. In competition this system performed well - with a perfect score and a time of 56 seconds (4th fastest in the class). Further work could have been done to increase driving speed and lower computation requirements within the plate detection system, however within the time constraints for the competition, the system performed admirably. 
 
 \end{document}
