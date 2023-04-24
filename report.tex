@@ -71,7 +71,7 @@ urlcolor=cyan,
             \label{fig:statemachine}
         \end{figure}
 
-        Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interprrets each frame and makes a transition decision based on it.
+        Three main types of navigational states existed: active navigation states, stopped states, and preprogrammed states. In preprogrammed states, where the robot executes a constant movement, the state machine transitions based off of a simple timer to move to the next state once the movement had been in progress for the preprogrammed length of time. In active navigation states, where the navigation algorithm is interpreting each frame on the fly to determine a which movement to command, or in stopped states, where the robot is waiting for an event to occur before proceeding, the state machine interprets each frame and makes a transition decision based on it.
 
         \subsubsection{Pavement and Grass Detection}
             In order to transition from the pavement navigation states to the grass navigation state and vice versa, the state machine must be able to determine if the robot is driving on grass or on pavement. This detection is accomplished with a small neural network, implemented within a `SurfaceDetector' class. Training data was 400 images captured from the robot camera, evenly split between grass and pavement surfaces. 
@@ -139,18 +139,21 @@ urlcolor=cyan,
             \begin{figure}
                 \begin{center}
                     \begin{subfigure}{0.5\linewidth}
+                        \centering\captionsetup{width=.9\linewidth}%
                         \includegraphics[width=0.9\linewidth]{charwidth.png}
-                        \subcaption{Charachteristic pattern of widening (1), narrowing (2), and widening again (3) as we follows the inner line (turquoise) into the junction.}
+                        \subcaption{Characteristic pattern of widening (1),
+                         narrowing (2), and widening again (3)
+                          as we follow the inner line.}
                         \label{fig:charwidth}
                       \end{subfigure}%
                       \begin{subfigure}{0.5\linewidth}
-                        \centering
-                        \includegraphics[width=0.9\linewidth]{junctiondiagram.png}
+                        \centering\captionsetup{width=.9\linewidth}%
+                        \includegraphics[width=\linewidth]{junctiondiagram.png}
                         \subcaption{Flowchart showing junction detection algorithm based on pavement width.}
                 \label{fig:junctionalg}
                       \end{subfigure}
+                    \centering\caption{Junction detection algorithm based on pavement width.}
                 \end{center}
-                \caption{Junction detection algorithm based on pavement width.}
                 \label{fig:junctiondetect}
             \end{figure}
 
@@ -201,7 +204,7 @@ urlcolor=cyan,
 
     \subsection{Plate Reader Commands} \label{platereadercontrol}
 
-    An item noticed during development was that while driving could be stable at relatively high speeds, good readings of the plates would require a more conservative pace. This constraint was mediated by recieving a set of commands from the plate reader node. Whenever the plate reader would detect a plate that we do not have a sufficient number of good readings on, it would send a command to the contoller to move into a StopTurn{Left/Right} state. The state machine will save the state it is currently in, and do as commanded by the plate reader for a specified period of time or until commanded to drive again, in which case it will return from whence it came. This additional functionality allowed the system to navigate at a significantly faster pace without missing specific plates.
+    An item noticed during development was that while driving could be stable at relatively high speeds, good readings of the plates would require a more conservative pace. This constraint was mediated by receiving a set of commands from the plate reader node. Whenever the plate reader would detect a plate that we do not have a sufficient number of good readings on, it would send a command to the controller to move into a StopTurn{Left/Right} state. The state machine will save the state it is currently in, and do as commanded by the plate reader for a specified period of time or until commanded to drive again, in which case it will return from whence it came. This additional functionality allowed the system to navigate at a significantly faster pace without missing specific plates.
 
 
 \section{License Plate Detection}
@@ -210,7 +213,7 @@ Plate detection was accomplished using a series of handcrafted filters to extrac
 
 \begin{figure}
 \centering
-\includegraphics[width=0.7\linewidth]{Image Processing Algorithm.drawio.png}
+\includegraphics[width=0.9\linewidth]{Image Processing Algorithm.drawio.png}
 \caption{Image Processing Algorithm}
 \label{fig:platepipeline}
 \end{figure}
