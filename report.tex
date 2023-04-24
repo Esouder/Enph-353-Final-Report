@@ -202,7 +202,7 @@ urlcolor=cyan,
 
             \begin{figure}
                 \begin{center}
-                    \includegraphics[width=0.5\linewidth]{grass-photos.png}
+                    \includegraphics[width=0.7\linewidth]{grass-photos.png}
                 \end{center}
                 \caption{Grass edge detection image processing pipeline. Input image, brightening, HSV thresholding, cropping and edge detection, and final output.}
                 \label{fig:grasspipeline}
@@ -250,12 +250,12 @@ The image is then masked with a blue HSV filter to isolate the license plate cha
 
 Finally, this mask is contoured, bounding boxed, and then the bounding box expanded. The characters are then filtered based on size and aspect ratio. The remaining contours are then sorted by x position and the characters are extracted from the plate. The characters are then resized to a standard dimension and passed to the neural network for classification.
 
-\begin{figure}
-\centering
-\includegraphics[width=0.8\linewidth]{XX00 identified.png}
-\caption{Identified XX00 plate.}
-\label{fig:XX00identified}
-\end{figure}
+% \begin{figure}
+% \centering
+% \includegraphics[width=0.8\linewidth]{XX00 identified.png}
+% \caption{Identified XX00 plate.}
+% \label{fig:XX00identified}
+% \end{figure}
 
 \subsection{Neural Networks}
 
